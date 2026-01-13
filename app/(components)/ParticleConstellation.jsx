@@ -106,7 +106,9 @@ export default function ParticleConstellation() {
     canvas.addEventListener('click', handleClick);
 
     const animate = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      // Clear canvas completely
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, width, height);
 
       // Update and draw particles
@@ -116,9 +118,9 @@ export default function ParticleConstellation() {
         const dy = mouseRef.current.y - particle.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance < 150) {
-          particle.vx += dx * 0.0001;
-          particle.vy += dy * 0.0001;
+        if (distance < 200) {
+          particle.vx += dx * 0.0002;
+          particle.vy += dy * 0.0002;
           particle.hovered = true;
         } else {
           particle.hovered = false;
@@ -128,33 +130,53 @@ export default function ParticleConstellation() {
         particle.x += particle.vx;
         particle.y += particle.vy;
 
-        // Boundary check
-        if (particle.x < 0 || particle.x > width) particle.vx *= -1;
-        if (particle.y < 0 || particle.y > height) particle.vy *= -1;
+        // Boundary check with bounce
+        if (particle.x < particle.radius) {
+          particle.x = particle.radius;
+          particle.vx *= -1;
+        } else if (particle.x > width - particle.radius) {
+          particle.x = width - particle.radius;
+          particle.vx *= -1;
+        }
+        if (particle.y < particle.radius) {
+          particle.y = particle.radius;
+          particle.vy *= -1;
+        } else if (particle.y > height - particle.radius) {
+          particle.y = height - particle.radius;
+          particle.vy *= -1;
+        }
 
         // Friction
-        particle.vx *= 0.99;
-        particle.vy *= 0.99;
+        particle.vx *= 0.98;
+        particle.vy *= 0.98;
 
-        // Keep in bounds
-        particle.x = Math.max(0, Math.min(width, particle.x));
-        particle.y = Math.max(0, Math.min(height, particle.y));
+        // Draw particle glow (outer)
+        if (particle.hovered) {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, 20, 0, Math.PI * 2);
+          const glowGradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, 20);
+          glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = glowGradient;
+          ctx.fill();
+        }
 
         // Draw particle
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.hovered ? 6 : particle.radius, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, particle.hovered ? 8 : particle.radius, 0, Math.PI * 2);
         ctx.fillStyle = particle.hovered ? '#ffffff' : '#cccccc';
+        ctx.shadowBlur = particle.hovered ? 15 : 5;
+        ctx.shadowColor = '#ffffff';
         ctx.fill();
+        ctx.shadowBlur = 0;
 
-        // Draw glow effect
+        // Draw particle ring when hovered
         if (particle.hovered) {
           ctx.beginPath();
           ctx.arc(particle.x, particle.y, 12, 0, Math.PI * 2);
-          const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, 12);
-          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = gradient;
-          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
         }
       });
 
@@ -165,12 +187,13 @@ export default function ParticleConstellation() {
           const dy = p1.y - p2.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < 150) {
+          if (distance < 250) {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 * (1 - distance / 150)})`;
-            ctx.lineWidth = 1;
+            const opacity = 0.4 * (1 - distance / 250);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+            ctx.lineWidth = p1.hovered || p2.hovered ? 2 : 1;
             ctx.stroke();
           }
         });
