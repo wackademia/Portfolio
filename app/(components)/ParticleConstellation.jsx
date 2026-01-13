@@ -96,7 +96,8 @@ export default function ParticleConstellation() {
         const dy = particle.y - clickY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance < 15) {
+        // Increase click radius for easier selection
+        if (distance < 25) {
           setSelectedParticle(particle.info);
         }
       });
