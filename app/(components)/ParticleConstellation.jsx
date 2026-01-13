@@ -56,19 +56,20 @@ export default function ParticleConstellation() {
     let width, height;
 
     const resizeCanvas = () => {
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
+      const rect = canvas.getBoundingClientRect();
+      width = canvas.width = rect.width;
+      height = canvas.height = rect.height;
       initParticles();
     };
 
     const initParticles = () => {
       particlesRef.current = infoData.map((info, index) => ({
         id: info.id,
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: 4,
+        x: Math.random() * (width - 100) + 50,
+        y: Math.random() * (height - 100) + 50,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.8,
+        radius: 6,
         info: info,
         hovered: false
       }));
