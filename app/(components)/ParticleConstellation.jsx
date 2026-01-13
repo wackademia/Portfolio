@@ -5,9 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function ParticleConstellation() {
   const canvasRef = useRef(null);
   const [selectedParticle, setSelectedParticle] = useState(null);
-  const particlesRef = useRef([]);
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const rafRef = useRef();
+  const [hoveredId, setHoveredId] = useState(null);
 
   const infoData = [
     {
@@ -50,168 +48,174 @@ export default function ParticleConstellation() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      console.log('Canvas not found');
+      return;
+    }
 
     const ctx = canvas.getContext('2d');
-    let width, height;
+    if (!ctx) {
+      console.log('Context not found');
+      return;
+    }
 
-    const resizeCanvas = () => {
+    let width = 0;
+    let height = 0;
+    let particles = [];
+    let mouse = { x: 0, y: 0 };
+    let animationId = null;
+
+    // Initialize canvas size
+    const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      width = canvas.width = rect.width;
-      height = canvas.height = rect.height;
-      initParticles();
-    };
-
-    const initParticles = () => {
-      particlesRef.current = infoData.map((info, index) => ({
+      width = canvas.width = rect.width * window.devicePixelRatio;
+      height = canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      
+      // Initialize particles
+      particles = infoData.map((info, i) => ({
         id: info.id,
-        x: Math.random() * (width - 100) + 50,
-        y: Math.random() * (height - 100) + 50,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: (Math.random() - 0.5) * 0.8,
+        x: (width / window.devicePixelRatio) * (0.2 + (i * 0.15)),
+        y: (height / window.devicePixelRatio) * (0.3 + Math.random() * 0.4),
+        vx: (Math.random() - 0.5) * 1,
+        vy: (Math.random() - 0.5) * 1,
         radius: 6,
-        info: info,
-        hovered: false
+        info: info
       }));
+      
+      console.log('Canvas initialized:', width / window.devicePixelRatio, 'x', height / window.devicePixelRatio);
+      console.log('Particles:', particles.length);
     };
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
+    // Mouse tracking
     const handleMouseMove = (e) => {
       const rect = canvas.getBoundingClientRect();
-      mouseRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      
+      // Check hover
+      let foundHover = null;
+      particles.forEach(p => {
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          foundHover = p.id;
+        }
+      });
+      setHoveredId(foundHover);
     };
 
+    // Click handler
     const handleClick = (e) => {
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
-
-      particlesRef.current.forEach(particle => {
-        const dx = particle.x - clickX;
-        const dy = particle.y - clickY;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Increase click radius for easier selection
-        if (distance < 25) {
-          setSelectedParticle(particle.info);
+      
+      particles.forEach(p => {
+        const dx = p.x - clickX;
+        const dy = p.y - clickY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 30) {
+          setSelectedParticle(p.info);
         }
       });
     };
 
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('click', handleClick);
-
+    // Animation loop
     const animate = () => {
-      // Clear canvas completely
-      ctx.clearRect(0, 0, width, height);
+      const w = width / window.devicePixelRatio;
+      const h = height / window.devicePixelRatio;
+      
+      // Clear
       ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, w, h);
 
       // Update and draw particles
-      particlesRef.current.forEach(particle => {
+      particles.forEach((p, i) => {
         // Mouse attraction
-        const dx = mouseRef.current.x - particle.x;
-        const dy = mouseRef.current.y - particle.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = mouse.x - p.x;
+        const dy = mouse.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance < 200) {
-          particle.vx += dx * 0.0002;
-          particle.vy += dy * 0.0002;
-          particle.hovered = true;
-        } else {
-          particle.hovered = false;
+        if (dist < 200 && dist > 0) {
+          p.vx += (dx / dist) * 0.01;
+          p.vy += (dy / dist) * 0.01;
         }
 
         // Update position
-        particle.x += particle.vx;
-        particle.y += particle.vy;
+        p.x += p.vx;
+        p.y += p.vy;
 
-        // Boundary check with bounce
-        if (particle.x < particle.radius) {
-          particle.x = particle.radius;
-          particle.vx *= -1;
-        } else if (particle.x > width - particle.radius) {
-          particle.x = width - particle.radius;
-          particle.vx *= -1;
-        }
-        if (particle.y < particle.radius) {
-          particle.y = particle.radius;
-          particle.vy *= -1;
-        } else if (particle.y > height - particle.radius) {
-          particle.y = height - particle.radius;
-          particle.vy *= -1;
-        }
+        // Boundaries
+        if (p.x < 20) { p.x = 20; p.vx *= -0.8; }
+        if (p.x > w - 20) { p.x = w - 20; p.vx *= -0.8; }
+        if (p.y < 20) { p.y = 20; p.vy *= -0.8; }
+        if (p.y > h - 20) { p.y = h - 20; p.vy *= -0.8; }
 
         // Friction
-        particle.vx *= 0.98;
-        particle.vy *= 0.98;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
 
-        // Draw particle glow (outer)
-        if (particle.hovered) {
+        const isHovered = p.id === hoveredId;
+        const size = isHovered ? 10 : 6;
+
+        // Draw glow
+        if (isHovered) {
           ctx.beginPath();
-          ctx.arc(particle.x, particle.y, 20, 0, Math.PI * 2);
-          const glowGradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, 20);
-          glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-          glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = glowGradient;
+          ctx.arc(p.x, p.y, 25, 0, Math.PI * 2);
+          const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 25);
+          grad.addColorStop(0, 'rgba(255,255,255,0.3)');
+          grad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = grad;
           ctx.fill();
         }
 
         // Draw particle
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.hovered ? 8 : particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = particle.hovered ? '#ffffff' : '#cccccc';
-        ctx.shadowBlur = particle.hovered ? 15 : 5;
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = isHovered ? '#ffffff' : '#cccccc';
+        ctx.shadowBlur = isHovered ? 20 : 10;
         ctx.shadowColor = '#ffffff';
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Draw particle ring when hovered
-        if (particle.hovered) {
-          ctx.beginPath();
-          ctx.arc(particle.x, particle.y, 12, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        }
-      });
-
-      // Draw connections
-      particlesRef.current.forEach((p1, i) => {
-        particlesRef.current.slice(i + 1).forEach(p2 => {
-          const dx = p1.x - p2.x;
-          const dy = p1.y - p2.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 250) {
+        // Draw connections
+        particles.slice(i + 1).forEach(p2 => {
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (dist < 300) {
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
+            ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            const opacity = 0.4 * (1 - distance / 250);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
-            ctx.lineWidth = p1.hovered || p2.hovered ? 2 : 1;
+            const opacity = Math.max(0, 0.3 * (1 - dist / 300));
+            ctx.strokeStyle = `rgba(255,255,255,${opacity})`;
+            ctx.lineWidth = isHovered || p2.id === hoveredId ? 2 : 1;
             ctx.stroke();
           }
         });
       });
 
-      rafRef.current = requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
     };
 
+    // Start
+    resize();
+    window.addEventListener('resize', resize);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('click', handleClick);
     animate();
 
+    // Cleanup
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', resize);
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('click', handleClick);
-      cancelAnimationFrame(rafRef.current);
+      if (animationId) cancelAnimationFrame(animationId);
     };
-  }, []);
+  }, [hoveredId]);
 
   return (
     <div className="relative">
@@ -226,6 +230,7 @@ export default function ParticleConstellation() {
           ref={canvasRef}
           className="w-full h-full cursor-crosshair"
           data-testid="particle-constellation-canvas"
+          style={{ display: 'block' }}
         />
 
         <AnimatePresence>
@@ -235,7 +240,7 @@ export default function ParticleConstellation() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md z-50"
             >
               <div className="bg-black border-2 border-white rounded-2xl p-6 shadow-2xl">
                 <div className="flex items-start justify-between mb-4">
