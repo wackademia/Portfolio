@@ -2,112 +2,391 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   ZABIR AZMAYAN // TERMINAL — design tokens
+   ============================================================ */
+:root {
+  --bg: #04060a;
+  --bg-2: #070b12;
+  --ink: #dbe7f0;
+  --ink-dim: #7d8c9c;
+  --ink-faint: #3d4854;
+  --accent: #35e6ff;
+  --accent-2: #6d7dff;
+  --warn: #ffb03a;
+  --line: rgba(120, 200, 230, 0.14);
+  --line-hot: rgba(53, 230, 255, 0.5);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    Consolas, monospace;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+}
+
 * {
-  scroll-behavior: smooth;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background: var(--bg);
+  /* lenis drives scrolling; native smooth-scroll would fight it */
+  scroll-behavior: auto;
 }
 
 body {
-  @apply bg-black text-white antialiased;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
 
-.section-container {
-  @apply w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[88rem] mx-auto px-4 sm:px-5 md:px-6 lg:px-8;
-}
-
-/* Particle animation */
-@keyframes particle-float {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(10px, -10px); }
-  50% { transform: translate(-5px, 5px); }
-  75% { transform: translate(-10px, -5px); }
-}
-
-.particle-float {
-  animation: particle-float 20s ease-in-out infinite;
-}
-
-/* Glitch effect */
-@keyframes glitch {
-  0% { transform: translate(0); }
-  20% { transform: translate(-2px, 2px); }
-  40% { transform: translate(-2px, -2px); }
-  60% { transform: translate(2px, 2px); }
-  80% { transform: translate(2px, -2px); }
-  100% { transform: translate(0); }
-}
-
-.glitch {
-  animation: glitch 0.3s linear;
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(90deg, #ffffff 0%, #666666 50%, #ffffff 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradient-shift 3s linear infinite;
-}
-
-@keyframes gradient-shift {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-
-/* Reveal animation */
-@keyframes reveal {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.reveal {
-  animation: reveal 0.8s ease-out forwards;
-}
-
-/* Scan line effect */
-.scan-line {
-  position: relative;
+/* Locked while the entry gate is up */
+body[data-locked="true"] {
   overflow: hidden;
+  height: 100vh;
 }
 
-.scan-line::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
+::selection {
+  background: var(--accent);
+  color: #02040a;
+}
+
+/* ---------- layout ---------- */
+.shell {
   width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #ffffff, transparent);
-  animation: scan 3s linear infinite;
+  max-width: 82rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+@media (min-width: 768px) {
+  .shell {
+    padding: 0 2.5rem;
+  }
+}
+@media (min-width: 1280px) {
+  .shell {
+    padding: 0 4rem;
+  }
 }
 
-@keyframes scan {
-  0% { left: -100%; }
-  100% { left: 100%; }
+/* ---------- type ---------- */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
 }
 
-/* Custom scrollbar */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.dim {
+  color: var(--ink-dim);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+.hairline {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--line-hot), transparent);
+  opacity: 0.6;
+}
+
+/* ---------- surfaces ---------- */
+.panel {
+  position: relative;
+  background: linear-gradient(
+    150deg,
+    rgba(14, 24, 36, 0.72),
+    rgba(6, 10, 16, 0.55)
+  );
+  border: 1px solid var(--line);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+}
+
+/* corner ticks — the "instrument panel" detail */
+.panel::before,
+.panel::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--line-hot);
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+.panel:hover::before,
+.panel:hover::after {
+  width: 22px;
+  height: 22px;
+}
+
+.panel-hot {
+  border-color: rgba(53, 230, 255, 0.35);
+  box-shadow: 0 0 0 1px rgba(53, 230, 255, 0.06),
+    0 30px 80px -40px rgba(53, 230, 255, 0.5);
+}
+
+/* ---------- grain + scanline overlay ---------- */
+.fx-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+.fx-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.035) 0px,
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+.fx-overlay::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  animation: grain 0.6s steps(3) infinite;
+  opacity: 0.28;
+}
+
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-3%, 2%); }
+  66% { transform: translate(2%, -3%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* vignette */
+.fx-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 39;
+  background: radial-gradient(
+    120% 90% at 50% 45%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/* ---------- glitch text ---------- */
+.glitch {
+  position: relative;
+  display: inline-block;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 0 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+.glitch:hover::before {
+  color: var(--accent);
+  transform: translate(-2px, -1px);
+  opacity: 0.9;
+  animation: glitch-a 0.5s steps(2) infinite;
+}
+.glitch:hover::after {
+  color: #ff4d6d;
+  transform: translate(2px, 1px);
+  opacity: 0.85;
+  animation: glitch-b 0.45s steps(2) infinite;
+}
+@keyframes glitch-a {
+  0% { clip-path: inset(0 0 82% 0); }
+  50% { clip-path: inset(48% 0 26% 0); }
+  100% { clip-path: inset(78% 0 4% 0); }
+}
+@keyframes glitch-b {
+  0% { clip-path: inset(72% 0 8% 0); }
+  50% { clip-path: inset(20% 0 62% 0); }
+  100% { clip-path: inset(4% 0 88% 0); }
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border: 1px solid var(--line-hot);
+  background: rgba(53, 230, 255, 0.05);
+  overflow: hidden;
+  cursor: pointer;
+  transition: color 0.3s, border-color 0.3s;
+}
+.btn > span {
+  position: relative;
+  z-index: 1;
+}
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn:hover {
+  color: #02040a;
+  border-color: var(--accent);
+}
+.btn:hover::before {
+  transform: scaleX(1);
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--ink-dim);
+}
+.btn-ghost:hover {
+  color: #02040a;
+}
+.btn-ghost::before {
+  background: var(--ink);
+}
+
+/* ---------- custom cursor ---------- */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 90;
+  will-change: transform;
+}
+.cursor-dot {
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.cursor-ring {
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 1px solid rgba(53, 230, 255, 0.55);
+  border-radius: 50%;
+  transition: width 0.28s, height 0.28s, margin 0.28s, background 0.28s,
+    border-color 0.28s;
+}
+.cursor-ring[data-hot="true"] {
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  background: rgba(53, 230, 255, 0.1);
+  border-color: var(--accent);
+}
+@media (pointer: coarse) {
+  .cursor-dot,
+  .cursor-ring {
+    display: none;
+  }
+}
+
+/* ---------- marquee ---------- */
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+.marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---------- caret ---------- */
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 0.15em;
+  background: var(--accent);
+  vertical-align: -0.12em;
+  animation: blink 1.05s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- scrollbar ---------- */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 9px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: #04060a;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #333333;
-  border-radius: 4px;
+  background: #16232f;
+  border: 2px solid #04060a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #24404f;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #666666;
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .fx-overlay::after {
+    animation: none;
+  }
 }
