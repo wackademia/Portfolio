@@ -1,66 +1,62 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { animate, createScope, scrambleText } from 'animejs';
+import { skipMotion } from '../../(lib)/motion';
 
-const CHARS = '█▓▒░<>/\\{}[]#$%&*+=-_01';
+// '-' is a range operator in animejs's chars string, so it sits at the end to read literally.
+const CHARS = '█▓▒░<>/\\{}[]#$%&*+=_01-';
 
 /**
- * Decodes text character-by-character out of noise. Runs once on enter and
- * again on hover, which makes headings feel like they're being received rather
- * than rendered.
+ * Decodes text character-by-character out of noise, using animejs's built-in
+ * scrambleText text-tween. Runs once on enter and again on hover, which makes
+ * headings feel like they're being received rather than rendered.
  */
 export default function Scramble({ text, as: Tag = 'span', className = '', speed = 34 }) {
-  const [out, setOut] = useState(text);
   const ref = useRef(null);
-  const timer = useRef(null);
-
-  const run = () => {
-    clearInterval(timer.current);
-    let frame = 0;
-    const total = text.length * 2 + 8;
-
-    timer.current = setInterval(() => {
-      frame += 1;
-      const revealed = Math.floor((frame / total) * text.length * 1.6);
-      setOut(
-        text
-          .split('')
-          .map((c, i) => {
-            if (c === ' ') return ' ';
-            if (i < revealed) return c;
-            return CHARS[Math.floor(Math.random() * CHARS.length)];
-          })
-          .join('')
-      );
-      if (frame >= total) {
-        clearInterval(timer.current);
-        setOut(text);
-      }
-    }, speed);
-  };
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          run();
-          io.disconnect();
-        }
-      },
-      { threshold: 0.4 }
-    );
-    io.observe(el);
-    return () => {
-      io.disconnect();
-      clearInterval(timer.current);
+
+    const run = () => {
+      if (skipMotion()) {
+        el.textContent = text;
+        return;
+      }
+      animate(el, {
+        textContent: scrambleText({
+          chars: CHARS,
+          from: 'random',
+          revealRate: 1000 / speed,
+        }),
+      });
     };
+
+    const scope = createScope({ root: ref }).add(() => {
+      const io = new IntersectionObserver(
+        ([e]) => {
+          if (e.isIntersecting) {
+            run();
+            io.disconnect();
+          }
+        },
+        { threshold: 0.4 }
+      );
+      io.observe(el);
+      el.addEventListener('mouseenter', run);
+      return () => {
+        io.disconnect();
+        el.removeEventListener('mouseenter', run);
+      };
+    });
+
+    return () => scope.revert();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text]);
+  }, [text, speed]);
 
   return (
-    <Tag ref={ref} className={className} onMouseEnter={run}>
-      {out}
+    <Tag ref={ref} className={className}>
+      {text}
     </Tag>
   );
 }

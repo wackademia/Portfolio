@@ -1,5 +1,7 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { animate, stagger } from 'animejs';
+import { skipMotion } from '../(lib)/motion';
 import { rig, pulse } from '../(lib)/store';
 import { SECTIONS, PROFILE } from '../(lib)/content';
 
@@ -13,6 +15,26 @@ export default function Hud() {
   const [depth, setDepth] = useState(0);
   const [clock, setClock] = useState('--:--:--');
   const [fps, setFps] = useState(60);
+  const bracketRefs = useRef([]);
+  bracketRefs.current = [];
+
+  useEffect(() => {
+    const els = bracketRefs.current.filter(Boolean);
+    if (!els.length) return;
+    if (skipMotion()) {
+      els.forEach((el) => {
+        el.style.opacity = 0.5;
+        el.style.transform = 'scale(1)';
+      });
+      return;
+    }
+    animate(els, {
+      opacity: [0, 0.5],
+      scale: [0.5, 1],
+      duration: 500,
+      delay: stagger(60),
+    });
+  }, []);
 
   useEffect(() => {
     const els = SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
@@ -69,10 +91,12 @@ export default function Hud() {
         'right-4 top-4 border-r border-t',
         'left-4 bottom-4 border-l border-b',
         'right-4 bottom-4 border-r border-b',
-      ].map((c) => (
+      ].map((c, i) => (
         <div
           key={c}
-          className={`absolute h-5 w-5 border-[var(--line-hot)] opacity-50 ${c}`}
+          ref={(el) => (bracketRefs.current[i] = el)}
+          className={`absolute h-5 w-5 border-[var(--line-hot)] ${c}`}
+          style={{ opacity: 0 }}
         />
       ))}
 

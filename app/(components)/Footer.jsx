@@ -1,10 +1,11 @@
 'use client';
 import { PROFILE, SECTIONS } from '../(lib)/content';
+import { Reveal } from './ui/Reveal';
 
 export default function Footer() {
   return (
     <footer className="relative z-10 border-t border-[var(--line)] bg-[rgba(4,6,10,0.72)] backdrop-blur-xl">
-      <div className="shell py-14">
+      <Reveal className="shell py-14">
         <div className="grid gap-10 md:grid-cols-3">
           <div>
             <p className="display text-3xl">ZABIR AZMAYAN</p>
@@ -63,7 +64,7 @@ export default function Footer() {
           <span>© {new Date().getFullYear()} ZABIR AZMAYAN</span>
           <span>BUILT WITH NEXT.JS · THREE.JS · WEBGL</span>
         </div>
-      </div>
+      </Reveal>
     </footer>
   );
 }

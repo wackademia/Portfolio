@@ -1,34 +1,79 @@
 'use client';
-import { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
-
-const EASE = [0.16, 1, 0.3, 1];
+import { useEffect, useRef } from 'react';
+import { animate, createScope } from 'animejs';
+import { EASE, revealIn, skipMotion } from '../../(lib)/motion';
 
 export function Reveal({ children, delay = 0, y = 34, className = '' }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-12% 0px -12% 0px' });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const scope = createScope({ root: ref }).add(() => {
+      const io = new IntersectionObserver(
+        ([e]) => {
+          if (e.isIntersecting) {
+            revealIn(el, { delay: delay * 1000, y });
+            io.disconnect();
+          }
+        },
+        { threshold: 0.12, rootMargin: '-12% 0px -12% 0px' }
+      );
+      io.observe(el);
+      return () => io.disconnect();
+    });
+
+    return () => scope.revert();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <motion.div
+    <div
       ref={ref}
       className={className}
-      initial={{ opacity: 0, y, filter: 'blur(6px)' }}
-      animate={
-        inView
-          ? { opacity: 1, y: 0, filter: 'blur(0px)' }
-          : { opacity: 0, y, filter: 'blur(6px)' }
-      }
-      transition={{ duration: 0.9, delay, ease: EASE }}
+      style={{ opacity: 0, transform: `translateY(${y}px)`, filter: 'blur(6px)' }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
 /** Section heading with an index code and a rule that draws itself in. */
 export function SectionHead({ code, kana, title, lede }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-15%' });
+  const lineRef = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    const line = lineRef.current;
+    if (!el || !line) return;
+
+    const scope = createScope({ root: ref }).add(() => {
+      const io = new IntersectionObserver(
+        ([e]) => {
+          if (e.isIntersecting) {
+            if (skipMotion()) {
+              line.style.transform = 'scaleX(1)';
+            } else {
+              animate(line, {
+                scaleX: [0, 1],
+                duration: 1100,
+                ease: EASE,
+                delay: 100,
+              });
+            }
+            io.disconnect();
+          }
+        },
+        { threshold: 0.15, rootMargin: '-15% 0px -15% 0px' }
+      );
+      io.observe(el);
+      return () => io.disconnect();
+    });
+
+    return () => scope.revert();
+  }, []);
 
   return (
     <div ref={ref} className="mb-14 md:mb-20">
@@ -36,12 +81,14 @@ export function SectionHead({ code, kana, title, lede }) {
         <span className="eyebrow">
           /{code} {kana}
         </span>
-        <motion.span
+        <span
+          ref={lineRef}
           className="h-px flex-1"
-          style={{ background: 'var(--line-hot)', transformOrigin: 'left' }}
-          initial={{ scaleX: 0 }}
-          animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
-          transition={{ duration: 1.1, ease: EASE, delay: 0.1 }}
+          style={{
+            background: 'var(--line-hot)',
+            transformOrigin: 'left',
+            transform: 'scaleX(0)',
+          }}
         />
       </div>
       <Reveal>

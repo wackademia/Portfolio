@@ -1,34 +1,100 @@
 'use client';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { animate, createTimeline, onScroll } from 'animejs';
+import { useEffect, useRef } from 'react';
+import { EASE, skipMotion } from '../../(lib)/motion';
 import { PROFILE, EDUCATION } from '../../(lib)/content';
 import Scramble from '../ui/Scramble';
 
-const EASE = [0.16, 1, 0.3, 1];
-
 export default function Index() {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start start', 'end start'],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 140]);
-  const opacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
+  const sectionRef = useRef(null);
+  const contentRef = useRef(null);
+  const badgeRef = useRef(null);
+  const wordRefs = useRef([]);
+  wordRefs.current = [];
+  const paragraphRef = useRef(null);
+  const ctaRef = useRef(null);
+  const socialRef = useRef(null);
+  const statusRef = useRef(null);
+  const cueRef = useRef(null);
+  const cueBarRef = useRef(null);
+
+  /* ---- scroll-scrubbed parallax on the whole hero ----------------------- */
+  useEffect(() => {
+    if (skipMotion()) return;
+    const animation = animate(contentRef.current, {
+      translateY: [0, 140],
+      opacity: [1, 0.001],
+      ease: 'linear',
+      autoplay: onScroll({
+        target: sectionRef.current,
+        enter: 'top top',
+        leave: 'bottom top',
+        sync: true,
+      }),
+    });
+    return () => animation.pause?.();
+  }, []);
+
+  /* ---- entrance timeline -------------------------------------------------- */
+  useEffect(() => {
+    const refs = [badgeRef, paragraphRef, ctaRef, socialRef, statusRef, cueRef];
+    if (skipMotion()) {
+      refs.forEach((r) => {
+        if (r.current) {
+          r.current.style.opacity = 1;
+          r.current.style.transform = 'none';
+        }
+      });
+      wordRefs.current.forEach((el) => {
+        if (el) el.style.transform = 'none';
+      });
+      return;
+    }
+
+    const tl = createTimeline({ defaults: { ease: EASE } });
+    tl.add(badgeRef.current, { opacity: [0, 1], translateY: [20, 0], duration: 800 }, 1250);
+
+    // headline words slide up individually, staggered 100ms apart
+    wordRefs.current.forEach((el, i) => {
+      if (!el) return;
+      animate(el, {
+        translateY: ['110%', '0%'],
+        duration: 1000,
+        delay: 1300 + i * 100,
+        ease: EASE,
+      });
+    });
+    tl.add(statusRef.current, { opacity: [0, 1], translateX: [40, 0], duration: 1000 }, 1550)
+      .add(paragraphRef.current, { opacity: [0, 1], duration: 900 }, 1700)
+      .add(ctaRef.current, { opacity: [0, 1], translateY: [18, 0], duration: 800 }, 1900)
+      .add(socialRef.current, { opacity: [0, 1], duration: 900 }, 2100)
+      .add(cueRef.current, { opacity: [0, 1], duration: 1000 }, 2400);
+
+    animate(cueBarRef.current, {
+      scaleY: [0.2, 1, 0.2],
+      duration: 2000,
+      loop: true,
+      ease: 'inOutSine',
+      delay: 2400,
+    });
+
+    return () => tl.pause?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <section
       id="index"
-      ref={ref}
+      ref={sectionRef}
       className="relative flex min-h-[100svh] items-center pt-28 pb-24"
     >
-      <motion.div style={{ y, opacity }} className="shell w-full">
+      <div ref={contentRef} className="shell w-full">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
           {/* ---- left: identity ---- */}
           <div className="lg:col-span-7">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.25, duration: 0.8, ease: EASE }}
+            <div
+              ref={badgeRef}
+              style={{ opacity: 0, transform: 'translateY(20px)' }}
               className="mb-7 flex flex-wrap items-center gap-x-4 gap-y-2"
             >
               <span className="eyebrow">/00 Index</span>
@@ -36,44 +102,41 @@ export default function Index() {
               <span className="mono text-[11px] tracking-[0.28em] text-[var(--ink-dim)]">
                 {PROFILE.role}
               </span>
-            </motion.div>
+            </div>
 
             <h1 className="display text-[15vw] leading-[0.84] sm:text-[11vw] lg:text-[7.4rem]">
               {['ZABIR', 'AZMAYAN'].map((word, i) => (
                 <span key={word} className="block overflow-hidden">
-                  <motion.span
+                  <span
+                    ref={(el) => (wordRefs.current[i] = el)}
                     className="block"
-                    initial={{ y: '110%' }}
-                    animate={{ y: '0%' }}
-                    transition={{ delay: 1.3 + i * 0.1, duration: 1, ease: EASE }}
-                    style={
-                      i === 1
+                    style={{
+                      transform: 'translateY(110%)',
+                      ...(i === 1
                         ? {
                             WebkitTextStroke: '1px rgba(53,230,255,0.8)',
                             color: 'transparent',
                           }
-                        : undefined
-                    }
+                        : undefined),
+                    }}
                   >
                     {word}
-                  </motion.span>
+                  </span>
                 </span>
               ))}
             </h1>
 
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.7, duration: 0.9 }}
+            <p
+              ref={paragraphRef}
+              style={{ opacity: 0 }}
               className="mt-9 max-w-xl text-lg leading-relaxed text-[var(--ink-dim)]"
             >
               {PROFILE.blurb}
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.9, duration: 0.8, ease: EASE }}
+            <div
+              ref={ctaRef}
+              style={{ opacity: 0, transform: 'translateY(18px)' }}
               className="mt-10 flex flex-wrap items-center gap-4"
             >
               <a href="#archive" className="btn">
@@ -82,12 +145,11 @@ export default function Index() {
               <a href="#uplink" className="btn btn-ghost">
                 <span>Open uplink</span>
               </a>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 2.1, duration: 0.9 }}
+            <div
+              ref={socialRef}
+              style={{ opacity: 0 }}
               className="mono mt-10 flex flex-wrap gap-x-7 gap-y-2 text-[11px] tracking-[0.22em] text-[var(--ink-faint)]"
             >
               {[
@@ -104,14 +166,13 @@ export default function Index() {
                   {label}
                 </a>
               ))}
-            </motion.div>
+            </div>
           </div>
 
           {/* ---- right: status card ---- */}
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1.55, duration: 1, ease: EASE }}
+          <div
+            ref={statusRef}
+            style={{ opacity: 0, transform: 'translateX(40px)' }}
             className="lg:col-span-5 lg:pl-6"
           >
             <div className="panel panel-hot p-7 md:p-8">
@@ -158,26 +219,25 @@ export default function Index() {
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* scroll cue */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2.4, duration: 1 }}
+      <div
+        ref={cueRef}
+        style={{ opacity: 0 }}
         className="absolute bottom-14 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 md:flex"
       >
         <span className="mono text-[10px] tracking-[0.3em] text-[var(--ink-faint)]">
           SCROLL
         </span>
-        <motion.span
-          animate={{ scaleY: [0.2, 1, 0.2], originY: 0 }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        <span
+          ref={cueBarRef}
+          style={{ transformOrigin: 'top', transform: 'scaleY(0.2)' }}
           className="block h-10 w-px bg-[var(--accent)]"
         />
-      </motion.div>
+      </div>
     </section>
   );
 }

@@ -1,51 +1,98 @@
 'use client';
-import { useRef, useState } from 'react';
-import {
-  AnimatePresence,
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useSpring,
-} from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { animate, createAnimatable, spring } from 'animejs';
+import { EASE, skipMotion } from '../../(lib)/motion';
 import { PROJECTS } from '../../(lib)/content';
 import { pulse } from '../../(lib)/store';
 import { Reveal, SectionHead } from '../ui/Reveal';
 import Scramble from '../ui/Scramble';
 
-const EASE = [0.16, 1, 0.3, 1];
-const SPRING = { stiffness: 180, damping: 20, mass: 0.6 };
+// mirrors the { stiffness: 180, damping: 20, mass: 0.6 } spring the tilt used to run on
+const TILT_SPRING = spring({ stiffness: 180, damping: 20, mass: 0.6 });
 
 function ProjectCard({ p, i, open, onToggle }) {
   const ref = useRef(null);
-  const rx = useSpring(useMotionValue(0), SPRING);
-  const ry = useSpring(useMotionValue(0), SPRING);
-  const mx = useMotionValue(50);
-  const my = useMotionValue(50);
+  const detailRef = useRef(null);
+  const iconRef = useRef(null);
+  const animatableRef = useRef(null);
 
-  // holographic sheen tracks the pointer across the card face
-  const sheen = useMotionTemplate`radial-gradient(340px circle at ${mx}% ${my}%, rgba(53,230,255,0.16), transparent 62%)`;
+  // holographic tilt — createAnimatable is built for exactly this: cheap,
+  // continuously-retargeted updates driven straight from pointermove
+  useEffect(() => {
+    if (skipMotion() || !ref.current) return;
+    animatableRef.current = createAnimatable(ref.current, {
+      rotateX: { unit: 'deg', duration: 300, ease: TILT_SPRING },
+      rotateY: { unit: 'deg', duration: 300, ease: TILT_SPRING },
+    });
+    return () => animatableRef.current?.revert();
+  }, []);
 
   const onMove = (e) => {
-    const r = ref.current?.getBoundingClientRect();
+    const el = ref.current;
+    const r = el?.getBoundingClientRect();
     if (!r) return;
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    mx.set(px * 100);
-    my.set(py * 100);
-    ry.set((px - 0.5) * 13);
-    rx.set(-(py - 0.5) * 13);
+    el.style.setProperty('--mx', `${px * 100}%`);
+    el.style.setProperty('--my', `${py * 100}%`);
+    animatableRef.current?.rotateY((px - 0.5) * 13).rotateX(-(py - 0.5) * 13);
   };
 
   const reset = () => {
-    rx.set(0);
-    ry.set(0);
-    mx.set(50);
-    my.set(50);
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('--mx', '50%');
+    el.style.setProperty('--my', '50%');
+    animatableRef.current?.rotateX(0).rotateY(0);
   };
+
+  // expand/collapse detail panel — measured-height animation replaces
+  // framer's height:'auto' AnimatePresence trick
+  useEffect(() => {
+    const el = detailRef.current;
+    if (!el) return;
+    if (skipMotion()) {
+      el.style.height = open ? 'auto' : '0px';
+      el.style.opacity = open ? 1 : 0;
+      return;
+    }
+    if (open) {
+      const target = el.scrollHeight;
+      el.style.height = '0px';
+      animate(el, {
+        height: [0, target],
+        opacity: [0, 1],
+        duration: 500,
+        ease: EASE,
+        onComplete: () => {
+          el.style.height = 'auto';
+        },
+      });
+    } else {
+      const from = el.scrollHeight;
+      el.style.height = `${from}px`;
+      animate(el, {
+        height: [from, 0],
+        opacity: [1, 0],
+        duration: 400,
+        ease: EASE,
+      });
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const el = iconRef.current;
+    if (!el) return;
+    if (skipMotion()) {
+      el.style.transform = open ? 'rotate(45deg)' : 'rotate(0deg)';
+      return;
+    }
+    animate(el, { rotate: open ? 45 : 0, duration: 300, ease: EASE });
+  }, [open]);
 
   return (
     <Reveal delay={i * 0.08}>
-      <motion.article
+      <article
         ref={ref}
         onMouseMove={onMove}
         onMouseLeave={reset}
@@ -54,17 +101,20 @@ function ProjectCard({ p, i, open, onToggle }) {
           pulse(0.7);
         }}
         style={{
-          rotateX: rx,
-          rotateY: ry,
           transformPerspective: 1100,
           transformStyle: 'preserve-3d',
+          '--mx': '50%',
+          '--my': '50%',
         }}
         className="panel group relative cursor-pointer overflow-hidden p-7 md:p-8"
         data-cursor="hot"
       >
-        <motion.div
+        <div
           className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          style={{ background: sheen }}
+          style={{
+            background:
+              'radial-gradient(340px circle at var(--mx) var(--my), rgba(53,230,255,0.16), transparent 62%)',
+          }}
         />
 
         {/* scan sweep on hover */}
@@ -92,39 +142,29 @@ function ProjectCard({ p, i, open, onToggle }) {
             {p.desc}
           </p>
 
-          <AnimatePresence initial={false}>
-            {open && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.5, ease: EASE }}
-                className="overflow-hidden"
-              >
-                <div className="my-6 hairline" />
-                <div className="grid grid-cols-3 gap-4">
-                  {p.metrics.map(([k, v]) => (
-                    <div key={k}>
-                      <p className="mono text-[10px] tracking-[0.24em] text-[var(--ink-faint)]">
-                        {k.toUpperCase()}
-                      </p>
-                      <p className="mt-1.5 text-base text-[var(--ink)]">{v}</p>
-                    </div>
-                  ))}
+          <div ref={detailRef} className="overflow-hidden" style={{ height: 0, opacity: 0 }}>
+            <div className="my-6 hairline" />
+            <div className="grid grid-cols-3 gap-4">
+              {p.metrics.map(([k, v]) => (
+                <div key={k}>
+                  <p className="mono text-[10px] tracking-[0.24em] text-[var(--ink-faint)]">
+                    {k.toUpperCase()}
+                  </p>
+                  <p className="mt-1.5 text-base text-[var(--ink)]">{v}</p>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {p.tech.map((t) => (
-                    <span
-                      key={t}
-                      className="mono border border-[var(--line)] px-2.5 py-1 text-[10px] tracking-[0.16em] text-[var(--ink-dim)]"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {p.tech.map((t) => (
+                <span
+                  key={t}
+                  className="mono border border-[var(--line)] px-2.5 py-1 text-[10px] tracking-[0.16em] text-[var(--ink-dim)]"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
 
           <div className="mt-7 flex items-center justify-between border-t border-[var(--line)] pt-5">
             <span className="mono text-[10px] tracking-[0.24em] text-[var(--ink-dim)]">
@@ -132,11 +172,11 @@ function ProjectCard({ p, i, open, onToggle }) {
             </span>
             <span className="mono flex items-center gap-2 text-[10px] tracking-[0.24em] text-[var(--accent)]">
               {open ? 'COLLAPSE' : 'EXPAND'}
-              <motion.span animate={{ rotate: open ? 45 : 0 }}>+</motion.span>
+              <span ref={iconRef} className="inline-block">+</span>
             </span>
           </div>
         </div>
-      </motion.article>
+      </article>
     </Reveal>
   );
 }
